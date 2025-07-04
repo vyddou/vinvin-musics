@@ -7,15 +7,15 @@ puts "La base de donnée a bien été nettoyée."
 puts "La création de l'album et des pistes est en cours...."
 
 #création de l'album
-album = Album.create! (
-  title: "Simone"
+album = Album.create!(
+  title: "Simone",
   description: "SIMONE est un voyage musical aux accents Java et électro, où les mots d’un cœur brisé dansent sur les ruines d’un amour envolé. Dix chansons pour raconter l’histoire d’un homme égaré, abandonné par Simone, et qui cherche encore sa voix au creux des machines"
 )
 
 #Attache la cover de l'album
 album.cover.attach(
   io: File.open(Rails.root.join('lib', 'seed_assets', 'cover.jpg')),
-  filename: 'cover.png'
+  filename: 'cover.jpg'
 )
 
 #Création des piste puis y attache le fichier mp3
@@ -40,7 +40,7 @@ tracks_data.each_with_index do |track_info, index|
   )
 
   #récupere les fichier dans le bon dossier
-  tracks.audio_file.attach(
+  track.audio_file.attach(
     io: File.open(Rails.root.join('lib', 'seed_assets', track_info[:filename])),
     filename: track_info[:filename]
   )
