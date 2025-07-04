@@ -164,6 +164,7 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.8-x86_64-linux-musl)
       racc (~> 1.4)
+    ostruct (0.6.2)
     pg (1.5.9)
     pp (0.6.2)
       prettyprint
@@ -289,6 +290,7 @@ DEPENDENCIES
   debug
   jbuilder
   jsbundling-rails
+  ostruct
   pg (~> 1.1)
   puma (>= 5.0)
   rails (~> 7.1.5, >= 7.1.5.1)
