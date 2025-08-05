@@ -1,9 +1,10 @@
 import { createApp } from 'vue';
-import HelloWorld from '../components/HelloWorld.vue';
+// Importation du composant AlbumDisplay
+import AlbumDisplay from '../components/AlbumDisplay.vue';
 
 // Attend que le DOM soit chargé avant de lancer l'app Vue
 document.addEventListener('DOMContentLoaded', () => {
-  // Ces deux lignes doivent être à l'intérieur pour s'exécuter au bon moment
-  const app = createApp(HelloWorld);
+  // Composant pour créer l'application Vue
+const app = createApp(AlbumDisplay);
   app.mount('#app');
 });
