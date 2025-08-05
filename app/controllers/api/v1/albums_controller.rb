@@ -1,10 +1,29 @@
 class Api::V1::AlbumsController < ApplicationController
   def index
-    # On précise ::Album pour chercher à la racine d
-    @albums = ::Album.includes(:tracks)
-    render json: @albums.to_json(
-      include: {tracks: { methods: :audio_file_url } },
-      methods: :cover_url
-    )
+  albums = ::Album.all
+
+  if albums.empty?
+    render json: []
+    return
   end
+
+  albums_data = albums.map do |album| # map transforme chaque album en hash JSON
+    {
+      id: album.id,
+      title: album.title,
+      description: album.description,
+      cover_url: album.cover_url,
+      tracks: album.tracks.map do |track|  # map transforme chaque piste en hash JSON
+        {
+          id: track.id,
+          title: track.title,
+          track_number: track.track_number,
+          audio_file_url: track.audio_file_url
+        }
+      end
+    }
+  end
+
+  render json: albums_data
+end
 end
