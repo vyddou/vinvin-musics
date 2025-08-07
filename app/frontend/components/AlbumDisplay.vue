@@ -27,7 +27,7 @@
       <li v-for="track in album.tracks" :key="track.id"
       class="py-1 border-b last:border-b-0 border-gray-200">
 
-        {{ track.track_number }}. {{ track.title }}
+        {{ track.title }}
       </li>
     </ul>
 
