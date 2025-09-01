@@ -1,5 +1,3 @@
-# db/seeds.rb
-
 ActiveRecord::Base.transaction do
   # On nettoie dans un ordre logique (pistes -> albums -> genres)
   Track.delete_all    # supprime toutes les pistes
@@ -17,7 +15,7 @@ ActiveRecord::Base.transaction do
   # 3) On crée l’album "Simone"
   simone = Album.create!(
     title: "Simone",                  # titre de l’album
-    cover_url: "/covers/cover.png",   # pochette stockée dans public/covers/cover.png
+    cover_url: ActionController::Base.helpers.asset_path("covers/cover.png"),   # pochette stockée dans public/covers/cover.png
     release_year: 2025,               # adapte si besoin
     genre: variete                    # association au genre Variété
   )

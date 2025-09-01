@@ -1,135 +1,147 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+// on importe les APIs de Vue
+import { ref, onMounted, onBeforeUnmount } from 'vue'       // ← refs + hooks
 
-const album = ref(null)
-const isLoading = ref(true)
-const errorMsg = ref(null)
+// ---- ÉTAT ----
+const album = ref(null)                                     // ← album + pistes
+const isLoading = ref(true)                                 // ← état de chargement
+const errorMsg = ref(null)                                  // ← message d’erreur
 
-const audioEl = ref(null)
-const currentTrackId = ref(null)
-const isPlaying = ref(false)
+const audioEl = ref(null)                                   // ← lecteur audio unique (caché)
+const currentTrackId = ref(null)                            // ← id de la piste active
+const isPlaying = ref(false)                                // ← en cours de lecture ?
 
-onMounted(async () => {
+// ---- CHARGEMENT DES DONNÉES ----
+onMounted(async () => {                                     // ← au montage du composant
   try {
-    // 1) on récupère la liste des albums
-    const listRes = await fetch('/api/v1/albums')
-    if (!listRes.ok) throw new Error(`HTTP ${listRes.status} (index)`)
-    const albums = await listRes.json()
+    const listRes = await fetch('/api/v1/albums')           // ← récupère tous les albums
+    if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`)
+    const albums = await listRes.json()                     // ← parse JSON
 
-    // 2) on cherche "Simone", sinon on prend le premier
-    const target = albums.find(a => a.title === 'Simone') || albums[0]
-    if (!target) throw new Error('Aucun album trouvé')
+    const target = albums.find(a => a.title === 'Simone')   // ← cherche l’album "Simone"
+                  || albums[0]                              // ← fallback: 1er album
+    if (!target) throw new Error('Aucun album')
 
-    // 3) on charge le détail (avec les tracks)
-    const showRes = await fetch(`/api/v1/albums/${target.id}`)
-    if (!showRes.ok) throw new Error(`HTTP ${showRes.status} (show)`)
-    album.value = await showRes.json()
+    const showRes = await fetch(`/api/v1/albums/${target.id}`) // ← charge le détail + pistes
+    if (!showRes.ok) throw new Error(`HTTP ${showRes.status}`)
+    album.value = await showRes.json()                      // ← stocke l’album
   } catch (e) {
-    errorMsg.value = `Impossible de charger l’album : ${e}`
+    errorMsg.value = `Impossible de charger l’album : ${e}` // ← affiche l’erreur
   } finally {
-    isLoading.value = false
+    isLoading.value = false                                 // ← fin du chargement
   }
 
-  if (audioEl.value) {
-    audioEl.value.addEventListener('ended', onEnded)
-    audioEl.value.addEventListener('pause', () => { isPlaying.value = false })
-    audioEl.value.addEventListener('play', () => { isPlaying.value = true })
+  // branche les événements du lecteur audio
+  if (audioEl.value) {                                      // ← sécurité
+    audioEl.value.addEventListener('ended', onEnded)        // ← quand la piste finit
+    audioEl.value.addEventListener('pause', () => isPlaying.value = false) // ← pause
+    audioEl.value.addEventListener('play',  () => isPlaying.value = true)  // ← play
   }
 })
 
-onBeforeUnmount(() => {
+// nettoyage des listeners au démontage
+onBeforeUnmount(() => {                                     // ← avant destruction
   if (audioEl.value) audioEl.value.removeEventListener('ended', onEnded)
 })
 
-const srcOf = (track) => track.audio_url
-const playTrack = async (track) => {
-  if (currentTrackId.value === track.id) {
-    await audioEl.value.play()
-    isPlaying.value = true
-    return
+// ---- PLAYER ----
+const playTrack = async (track) => {                        // ← lance une piste
+  if (currentTrackId.value !== track.id) {                  // ← si ce n’est pas la même
+    currentTrackId.value = track.id                         // ← mémorise la piste
+    audioEl.value.src = track.audio_url                     // ← change la source audio
   }
-  currentTrackId.value = track.id
-  audioEl.value.src = srcOf(track)
   try {
-    await audioEl.value.play()
-    isPlaying.value = true
+    await audioEl.value.play()                              // ← joue
+    isPlaying.value = true                                  // ← maj état
   } catch (e) {
-    console.warn('Lecture bloquée :', e)
+    console.warn('Lecture bloquée :', e)                    // ← cas autoplay bloqué
     isPlaying.value = false
   }
 }
-const pause = () => { if (audioEl.value) { audioEl.value.pause(); isPlaying.value = false } }
-const toggle = (track) => { (currentTrackId.value === track.id && isPlaying.value) ? pause() : playTrack(track) }
-const onEnded = () => {
-  if (!album.value) return
-  const tracks = album.value.tracks
-  const idx = tracks.findIndex(t => t.id === currentTrackId.value)
-  const next = tracks[idx + 1]
-  if (next) { playTrack(next) } else { isPlaying.value = false; currentTrackId.value = null }
+
+const pause = () => {                                       // ← met en pause
+  audioEl.value?.pause()
+  isPlaying.value = false
 }
-const isActiveAndPlaying = (track) => currentTrackId.value === track.id && isPlaying.value
-const isActive = (track) => currentTrackId.value === track.id
+
+const toggle = (t) => {                                     // ← bascule play/pause
+  (currentTrackId.value === t.id && isPlaying.value) ? pause() : playTrack(t)
+}
+
+const onEnded = () => {                                     // ← quand la piste finit
+  const tracks = album.value?.tracks || []                  // ← liste des pistes
+  const i = tracks.findIndex(t => t.id === currentTrackId.value) // ← index courant
+  const next = tracks[i + 1]                                // ← piste suivante
+  next ? playTrack(next) : (isPlaying.value = false, currentTrackId.value = null) // ← fin d’album
+}
+
+const isActive = (t) => currentTrackId.value === t.id       // ← piste sélectionnée ?
+const isActiveAndPlaying = (t) => isActive(t) && isPlaying.value // ← en lecture ?
 </script>
 
-
 <template>
-  <!-- Header global -->
-  <div class="min-h-screen bg-gray-50 flex flex-col items-center py-10 px-4">
-    <!-- Carte album -->
-    <div class="w-full max-w-2xl rounded-2xl shadow-md bg-white p-6 mb-8">
-      <!-- État chargement / erreur -->
-      <div v-if="isLoading" class="text-gray-500">Chargement…</div>       <!-- message pendant fetch -->
-      <div v-else-if="errorMsg" class="text-red-600">{{ errorMsg }}</div> <!-- message d'erreur -->
-
-      <!-- Contenu album -->
-      <div v-else>
-        <!-- En-tête album -->
-        <div class="flex items-center gap-4 mb-6">
-          <img
-            :src="album.cover_url"
-            alt="cover album"
-            class="w-24 h-24 rounded-xl shadow"
-          /> <!-- pochette -->
-          <div>
-            <h2 class="text-2xl font-bold leading-tight">Muso</h2>        <!-- artiste -->
-            <p class="text-gray-600">Album : <span class="italic">{{ album.title }}</span></p> <!-- titre -->
-            <p class="text-sm text-gray-400" v-if="album.release_year">Sortie : {{ album.release_year }}</p> <!-- année -->
-          </div>
+  <!-- conteneur global -->
+  <div class="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4">
+    <!-- carte principale -->
+    <div class="w-full max-w-4xl rounded-2xl shadow-lg bg-white p-6">
+      <!-- header -->
+      <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-center mb-6">
+        <!-- image d’album (cover) -->
+        <img
+          :src="album?.cover_url"
+          alt="Cover album"
+          class="w-full aspect-square rounded-2xl object-cover bg-gray-100"
+        />
+        <!-- détails -->
+        <div class="flex flex-col justify-center">
+          <h1 class="text-3xl font-extrabold tracking-tight mb-2">Muso</h1>       <!-- artiste -->
+          <p class="text-gray-700">
+            <span class="font-semibold">Album :</span>
+            <span class="italic">{{ album?.title || '' }}</span>                  <!-- titre album -->
+          </p>
+          <p v-if="album?.release_year" class="text-gray-500">Sortie : {{ album.release_year }}</p>
         </div>
-
-        <!-- Liste des pistes -->
-        <ul class="divide-y divide-gray-100">
-          <li
-            v-for="track in album.tracks"
-            :key="track.id"
-            class="flex items-center gap-4 py-3 px-2 hover:bg-gray-50 rounded-lg"
-            :class="{'bg-emerald-50': isActive(track)}"
-          >
-            <!-- numéro + titre -->
-            <div class="w-8 text-right text-gray-400">{{ track.track_number }}</div> <!-- numéro -->
-            <div class="flex-1">
-              <p class="font-medium text-gray-800">{{ track.title }}</p>             <!-- titre piste -->
-              <p class="text-xs text-gray-400">Muso</p>                               <!-- artiste -->
-            </div>
-
-            <!-- Bouton Play/Pause -->
-            <button
-              @click="toggle(track)"
-              class="rounded-full border px-4 py-2 text-sm font-semibold transition
-                     hover:shadow active:scale-95"
-              :class="isActiveAndPlaying(track)
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-white text-gray-700 border-gray-300'"
-            >
-              {{ isActiveAndPlaying(track) ? 'Pause' : 'Play' }}                      <!-- libellé dynamique -->
-            </button>
-          </li>
-        </ul>
       </div>
+
+      <!-- états -->
+      <div v-if="isLoading" class="text-gray-500">Chargement…</div>              <!-- loading -->
+      <div v-else-if="errorMsg" class="text-red-600">{{ errorMsg }}</div>        <!-- erreur -->
+
+      <!-- liste des pistes -->
+      <ul v-else class="divide-y divide-gray-100">
+       <li
+          v-for="t in album.tracks"
+          :key="t.id"
+          class="flex items-center gap-4 py-3 px-2 rounded-lg hover:bg-gray-50"
+          :class="isActive(t) ? 'bg-emerald-100' : ''"
+        >
+          <!-- numéro -->
+          <div class="w-8 text-right text-gray-400">{{ t.track_number }}</div>   <!-- n° de piste -->
+
+          <!-- titre + artiste -->
+          <div class="flex-1">
+            <p class="font-medium text-gray-900 leading-tight">{{ t.title }}</p>  <!-- titre -->
+            <p class="text-xs text-gray-500">Muso</p>                              <!-- artiste -->
+          </div>
+
+          <!-- bouton play/pause stylé -->
+          <button
+            @click="toggle(t)"
+            class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold
+                  border transition hover:shadow active:scale-95"
+            :class="isActiveAndPlaying(t)
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-white text-gray-700 border-gray-300'"
+          >
+            <span v-if="isActiveAndPlaying(t)">Pause</span>
+            <span v-else>Play</span>
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <!-- Élément audio unique, invisible -->
-    <audio ref="audioEl" class="hidden"></audio>                                     <!-- lecteur global -->
+    <!-- lecteur audio global (caché) -->
+    <audio ref="audioEl" class="hidden"></audio>
   </div>
 </template>
 
