@@ -21,6 +21,7 @@ ActiveRecord::Base.transaction do
     release_year: 2025,               # adapte si besoin
     genre: variete                    # association au genre Variété
   )
+  puts "Album 'Simone' id=#{simone.id}"
 
   # 4) Liste des 10 titres (durées fictives OK pour l’instant)
   tracks = [
