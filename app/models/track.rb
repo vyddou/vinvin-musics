@@ -1,11 +1,14 @@
 class Track < ApplicationRecord
-   include Rails.application.routes.url_helpers # Important pour créer les URLs
-
+  # Une piste appartient à un album
   belongs_to :album
-  has_one_attached :audio_file # va récupérer le mp3 correspondant à la track
 
-  def audio_file_url
-    #genere l'url uniquement si un fichier audio est attaché
-    url_for(self.audio_file) if self.audio_file.attached?
+  # Contraintes utiles
+  validates :title, presence: true
+  validates :track_number, allow_nil: true, numericality: { only_integer: true }
+  validates :duration_seconds, allow_nil: true, numericality: { only_integer: true }
+
+  # Petit helper pratique : retourne l'artiste, par défaut "Muso" si vide
+  def artist_or_default
+    artist.presence || "Muso"
   end
 end
