@@ -1,29 +1,30 @@
-class Api::V1::AlbumsController < ApplicationController
-  def index
-  albums = ::Album.all
+module Api
+  module V1
+    class AlbumsController < ApplicationController
+      protect_from_forgery with: :null_session
 
-  if albums.empty?
-    render json: []
-    return
-  end
-
-  albums_data = albums.map do |album| # map transforme chaque album en hash JSON
-    {
-      id: album.id,
-      title: album.title,
-      description: album.description,
-      cover_url: album.cover_url,
-      tracks: album.tracks.map do |track|  # map transforme chaque piste en hash JSON
-        {
-          id: track.id,
-          title: track.title,
-          track_number: track.track_number,
-          audio_file_url: track.audio_file_url
-        }
+      # GET /api/v1/albums
+      def index
+        albums = Album.includes(:genre).order(:id)
+        render json: albums.as_json(
+          only: [:id, :title, :cover_url, :release_year],
+          include: { genre: { only: [:id, :name] } }
+        )
       end
-    }
-  end
 
-  render json: albums_data
-end
+      # GET /api/v1/albums/:id
+      def show
+        album = Album.includes(:genre, :tracks).find(params[:id])
+        render json: album.as_json(
+          only: [:id, :title, :cover_url, :release_year],
+          include: {
+            genre: { only: [:id, :name] },
+            tracks: {
+              only: [:id, :title, :artist, :duration_seconds, :audio_url, :cover_url, :track_number]
+            }
+          }
+        )
+      end
+    end
+  end
 end
