@@ -1,12 +1,11 @@
 class Album < ApplicationRecord
-  #permet la création d'urls
-  include Rails.application.routes.url_helpers
+  # Un album appartient à un genre (variété, rock, ...)
+  belongs_to :genre
 
-  has_one_attached :cover
-  has_many :tracks, dependent: :destroy
+  # Un album contient plusieurs pistes
+  has_many :tracks, -> { order(:track_number) }, dependent: :destroy
 
-  def cover_url
-    #génere un url uniquement si une pochette y est attachée
-    url_for(self.cover) if self.cover.attached?
-  end
+  # Contraintes de base
+  validates :title, presence: true
+  validates :release_year, allow_nil: true, numericality: { only_integer: true }
 end

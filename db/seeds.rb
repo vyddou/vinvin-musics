@@ -1,13 +1,28 @@
 # db/seeds.rb
 
 ActiveRecord::Base.transaction do
-  Track.delete_all
-  Genre.delete_all
+  # On nettoie dans un ordre logique (pistes -> albums -> genres)
+  Track.delete_all    # supprime toutes les pistes
+  Album.delete_all    # supprime tous les albums
+  Genre.delete_all    # supprime tous les genres
 
-  # Genre = nom de l'album
-  album = Genre.find_or_create_by!(name: "Simone")
+  # 1) Genres de base (Muso pourra choisir/ajouter plus tard)
+  %w[Variété Rock Punk Electro Jazz].each do |g|
+    Genre.find_or_create_by!(name: g)  # idempotent : pas de doublons si on relance
+  end
 
-  # Les 10 titres de l’album Simone
+  # 2) On choisit le genre de l’album "Simone" (ici : Variété)
+  variete = Genre.find_by!(name: "Variété")
+
+  # 3) On crée l’album "Simone"
+  simone = Album.create!(
+    title: "Simone",                  # titre de l’album
+    cover_url: "/covers/cover.png",   # pochette stockée dans public/covers/cover.png
+    release_year: 2025,               # adapte si besoin
+    genre: variete                    # association au genre Variété
+  )
+
+  # 4) Liste des 10 titres (durées fictives OK pour l’instant)
   tracks = [
     { title: "Simone reviens",          file: "01-simone-reviens.mp3",        duration: 180 },
     { title: "Fenêtre sur cour",        file: "02-fenetre-sur-cour.mp3",      duration: 200 },
@@ -21,17 +36,21 @@ ActiveRecord::Base.transaction do
     { title: "Envoyez-moi des lettres", file: "10-envoyez-moi-des-lettres.mp3", duration: 240 }
   ]
 
+  # 5) Création des pistes associées à l’album
   tracks.each_with_index do |t, i|
     Track.create!(
-      title: t[:title],
-      artist: "Muso",                           # nom de scène
-      duration_seconds: t[:duration],
-      audio_url: "/audio/#{t[:file]}",
-      cover_url: "/covers/cover.png",           # pochette commune
-      track_number: i + 1,
-      genre: album
+      title: t[:title],                       # nom de la piste
+      artist: "Muso",                         # nom d’artiste
+      duration_seconds: t[:duration],         # durée (fictive pour l’instant)
+      audio_url: "/audio/#{t[:file]}",        # chemin public vers le mp3
+      cover_url: simone.cover_url,            # on réutilise la cover de l’album
+      track_number: i + 1,                    # n° de piste (1..10)
+      album: simone                           # association à l’album "Simone"
     )
   end
 end
 
-puts "✅ Seed importée : Album 'Simone' (#{Track.count} titres)"
+puts "✅ Seeds OK :
+- Genres : #{Genre.count}
+- Albums : #{Album.count}
+- Tracks : #{Track.count}"
