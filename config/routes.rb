@@ -1,14 +1,9 @@
-Rails.application.routes.draw do
-  # API pour l'album
-  namespace :api do
-    namespace :v1 do
-      resources :albums, only: [:index]
+namespace :api do
+  namespace :v1 do
+    resources :genres, only: [:index, :show]
+    resources :albums, only: [:index, :show] do
+      resources :tracks, only: [:index]
     end
+    resources :tracks, only: [:index, :show]
   end
-
-  # Page d’accueil Vue + Rails
-  root "pages#home"
-
-  # healthcheck (optionnel)
-  get "up" => "rails/health#show", as: :rails_health_check
 end
