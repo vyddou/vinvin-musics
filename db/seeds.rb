@@ -29,7 +29,7 @@ ActiveRecord::Base.transaction do
     { title: "Allez va Simone",         file: "04-allez-va-simone.mp3",       duration: 210 },
     { title: "Je rentre",               file: "05-je-rentre.mp3",             duration: 175 },
     { title: "Simon",                   file: "06-simon.mp3",                 duration: 185 },
-    { title: "Ça va pas",               file: "07-za-va-pas.mp3",             duration: 195 },
+    { title: "Za va pas",               file: "07-za-va-pas.mp3",             duration: 195 },
     { title: "À Tataoui",               file: "08-a-tataoui.mp3",             duration: 200 },
     { title: "C’est la guerre",         file: "09-cest-la-guerre.mp3",        duration: 220 },
     { title: "Envoyez-moi des lettres", file: "10-envoyez-moi-des-lettres.mp3", duration: 240 }
