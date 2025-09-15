@@ -1,5 +1,8 @@
 # Ouvre le DSL des routes de l'application Rails
 Rails.application.routes.draw do
+  namespace :admin do
+    get 'dashboard/index'
+  end
   devise_for :users                 # routes Devise (login/logout/inscription)
 
   # --- Routes HTML publiques ---
