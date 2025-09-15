@@ -1,6 +1,6 @@
 // En v4 c’est de l’ESM → on utilise export default {} au lieu de module.exports = {}
 export default {
-  darkMode: 'class', // active le mode sombre via la classe .dark
+   // darkMode: 'class',   // ❌ on supprime pour désactiver totalement
   content: [
     './app/views/**/*.{html,erb}',
     './app/frontend/**/*.{js,ts,vue}',
