@@ -2,6 +2,8 @@ class Album < ApplicationRecord
   # Un album appartient à un genre (variété, rock, ...)
   belongs_to :genre
 
+  has_one_attached :cover        # <- cover Active Storage
+
   # Un album contient plusieurs pistes
   has_many :tracks, -> { order(:track_number) }, dependent: :destroy
 
