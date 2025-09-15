@@ -1,7 +1,5 @@
 class ApplicationController < ActionController::Base
-  # -- Devise: redirige vers login si non connecté
-  before_action :authenticate_user!
-
+   # rien d'obligatoire ici pour l'accès public
   private
 
   # -- Autorise seulement les admins
@@ -12,4 +10,4 @@ class ApplicationController < ActionController::Base
       redirect_to root_path, alert: "Accès réservé à l’admin."
     end
   end
-end 
+end
