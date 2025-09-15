@@ -1,0 +1,35 @@
+<div class="mx-auto max-w-5xl p-6">
+  <h1 class="text-2xl font-bold mb-6">Dashboard Admin</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="rounded-xl border p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Derniers albums</h2>
+        <%= link_to "Nouvel album", new_admin_album_path, class: "px-3 py-1 rounded bg-blue-600 text-white" %>
+      </div>
+      <ul class="space-y-2">
+        <% @albums.each do |album| %>
+          <li class="flex items-center justify-between">
+            <span><%= album.title %></span>
+            <%= link_to "Éditer", edit_admin_album_path(album), class: "text-blue-600" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="rounded-xl border p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold">Derniers titres</h2>
+        <%= link_to "Ajouter un titre", new_admin_album_path, class: "px-3 py-1 rounded bg-blue-600 text-white" %>
+      </div>
+      <ul class="space-y-2">
+        <% @tracks.each do |t| %>
+          <li class="flex items-center justify-between">
+            <span><%= t.title %> — <%= t.album&.title %></span>
+            <%= link_to "Éditer", edit_admin_track_path(t), class: "text-blue-600" %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+</div>
