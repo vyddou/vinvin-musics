@@ -30,7 +30,7 @@ ActiveRecord::Base.transaction do
     { title: "Je rentre",               file: "05-je-rentre.mp3",             duration: 175 },
     { title: "Simon",                   file: "06-simon.mp3",                 duration: 185 },
     { title: "Za va pas",               file: "07-za-va-pas.mp3",             duration: 195 },
-    { title: "À Tataoui",               file: "08-a-tataoui.mp3",             duration: 200 },
+    { title: "Tataoui",                 file: "08-a-tataoui.mp3",             duration: 200 },
     { title: "C’est la guerre",         file: "09-cest-la-guerre.mp3",        duration: 220 },
     { title: "Envoyez-moi des lettres", file: "10-envoyez-moi-des-lettres.mp3", duration: 240 }
   ]
@@ -53,3 +53,18 @@ puts "✅ Seeds OK :
 - Genres : #{Genre.count}
 - Albums : #{Album.count}
 - Tracks : #{Track.count}"
+
+# -- Crée un admin
+if User.where(email: "admin@muso.app").none?
+  u = User.new(
+    email: "admin@muso.app",  # email d’admin
+    password: "motdepassefort", # change en prod
+    password_confirmation: "motdepassefort",
+    name: "Muso Admin"
+  )
+  u.admin = true
+  u.save!
+  puts "Admin créé: admin@muso.app / motdepassefort"
+else
+  puts "Admin déjà présent."
+end

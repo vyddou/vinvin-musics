@@ -1,5 +1,6 @@
 # Ouvre le DSL des routes de l'application Rails
 Rails.application.routes.draw do
+  devise_for :users
   # --- Routes HTML (existant) ---
 
    root "pages#home"     # => GET / affiche pages#home
