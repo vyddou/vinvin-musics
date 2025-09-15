@@ -1,24 +1,24 @@
 <script setup>
-// ===== Vue + icônes =====
-import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
-import { Play, Pause, SkipBack, SkipForward } from 'lucide-vue-next'
+// ===== Imports Vue & icônes =====
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue' // API composition
+import { Play, Pause, SkipBack, SkipForward } from 'lucide-vue-next'      // Icônes du player
 
-// ===== État global =====
-const album = ref(null)
-const isLoading = ref(true)
-const errorMsg = ref(null)
+// ===== État global du composant =====
+const album = ref(null)            // album chargé depuis l’API
+const isLoading = ref(true)        // affichage d’un loader pendant la requête
+const errorMsg = ref(null)         // message d’erreur éventuel
 
-const audioEl = ref(null)
-const currentTrackId = ref(null)
-const isPlaying = ref(false)
-const currentTime = ref(0)
-const duration = ref(0)
+const audioEl = ref(null)          // <audio> HTML
+const currentTrackId = ref(null)   // id de la piste en cours
+const isPlaying = ref(false)       // état de lecture
+const currentTime = ref(0)         // temps courant (s)
+const duration = ref(0)            // durée totale (s)
 
 // ===== Drag progress =====
-const isDragging = ref(false)       // true quand on glisse la barre
-const progressWrap = ref(null)      // ref vers le conteneur de la barre
+const isDragging = ref(false)      // true quand on glisse la poignée
+const progressWrap = ref(null)     // ref vers le conteneur de la barre
 
-// format mm:ss
+// --- format mm:ss (ex: 2:09)
 const formatTime = (sec) => {
   if (!sec || sec === Infinity) return '0:00'
   const m = Math.floor(sec / 60)
@@ -26,52 +26,55 @@ const formatTime = (sec) => {
   return `${m}:${s}`
 }
 
-// ratio 0..1
+// --- ratio 0..1 pour la barre de progression
 const progress = computed(() => {
   if (!duration.value) return 0
   return Math.min(1, Math.max(0, currentTime.value / duration.value))
 })
 
-// piste active
+// --- piste active (objet piste) à partir de l’id courant
 const activeTrack = computed(() => {
   if (!album.value || !currentTrackId.value) return null
   return album.value.tracks.find(t => t.id === currentTrackId.value) || null
 })
 
-// helper d’état pour la liste
+// --- helpers d’état pour la liste
 const isActive = (track) => currentTrackId.value === track.id
 const isActiveAndPlaying = (track) => currentTrackId.value === track.id && isPlaying.value
 
-// charge l’album
+// ===== Chargement de l’album =====
 onMounted(async () => {
   try {
+    // 1) liste des albums
     const listRes = await fetch('/api/v1/albums')
     if (!listRes.ok) throw new Error(`HTTP ${listRes.status} (index)`)
     const albums = await listRes.json()
 
+    // 2) cible : album "Simone" sinon premier de la liste
     const target = albums.find(a => a.title === 'Simone') || albums[0]
     if (!target) throw new Error('Aucun album')
 
+    // 3) show album + pistes
     const showRes = await fetch(`/api/v1/albums/${target.id}`)
     if (!showRes.ok) throw new Error(`HTTP ${showRes.status} (show)`)
     album.value = await showRes.json()
   } catch (e) {
     errorMsg.value = `Impossible de charger l’album : ${e}`
   } finally {
-    isLoading.value = false
-    await nextTick()            // s’assure que <audio> est présent
-    setupAudioEvents()          // branchement des events
+    isLoading.value = false                     // stop loader
+    await nextTick()                            // s’assure que <audio> existe
+    setupAudioEvents()                          // branche les events audio
   }
 
-  // raccourcis clavier
+  // --- écoute globale clavier + drag
   window.addEventListener('keydown', onKeyDown)
-  // events globaux pour drag (souris + tactile)
   window.addEventListener('mousemove', onDragMove)
   window.addEventListener('mouseup', onDragEnd)
   window.addEventListener('touchmove', onDragMove, { passive: false })
   window.addEventListener('touchend', onDragEnd)
 })
 
+// ===== Nettoyage des listeners =====
 onBeforeUnmount(() => {
   if (audioEl.value) audioEl.value.removeEventListener('ended', onEnded)
   window.removeEventListener('keydown', onKeyDown)
@@ -81,7 +84,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('touchend', onDragEnd)
 })
 
-// branche les events audio
+// ===== Événements audio =====
 const setupAudioEvents = () => {
   if (!audioEl.value) return
   audioEl.value.addEventListener('error', (e) => {
@@ -93,7 +96,8 @@ const setupAudioEvents = () => {
   audioEl.value.addEventListener('pause', () => { isPlaying.value = false })
   audioEl.value.addEventListener('play',  () => { isPlaying.value = true  })
   audioEl.value.addEventListener('timeupdate', () => {
-    if (!isDragging.value) {                       // ne pas “sauter” pendant le drag
+    // on ne bouge pas le curseur durant le drag
+    if (!isDragging.value) {
       currentTime.value = audioEl.value.currentTime || 0
     }
     duration.value = audioEl.value.duration || 0
@@ -103,7 +107,7 @@ const setupAudioEvents = () => {
   })
 }
 
-// actions player
+// ===== Actions player =====
 const playTrack = async (track) => {
   if (!audioEl.value) return
   if (currentTrackId.value !== track.id) {
@@ -144,7 +148,7 @@ const onEnded = () => {
   next ? playTrack(next) : (isPlaying.value = false, currentTrackId.value = null)
 }
 
-// seek par clic simple
+// ===== Clic dans la barre de progression =====
 const onProgressClick = (e) => {
   if (!audioEl.value || !duration.value) return
   const rect = e.currentTarget.getBoundingClientRect()
@@ -165,11 +169,11 @@ const onDragStart = (e) => {
 const onDragMove = (e) => {
   if (!isDragging.value) return
   e.preventDefault?.()
-  updateTimeFromEvent(e, /*previewOnly*/ true) // on bouge l’affichage sans toucher l’audio en temps réel
+  updateTimeFromEvent(e, /*previewOnly*/ true)
 }
 const onDragEnd = (e) => {
   if (!isDragging.value || !audioEl.value) return
-  updateTimeFromEvent(e)                       // on fixe le temps final
+  updateTimeFromEvent(e)
   isDragging.value = false
 }
 const updateTimeFromEvent = (e, previewOnly = false) => {
@@ -185,7 +189,7 @@ const updateTimeFromEvent = (e, previewOnly = false) => {
   }
 }
 
-// raccourcis clavier
+// ===== Raccourcis clavier =====
 const onKeyDown = (e) => {
   if (['Space', 'ArrowRight', 'ArrowLeft'].includes(e.code)) e.preventDefault()
   if (e.code === 'Space') {
@@ -203,137 +207,149 @@ const onKeyDown = (e) => {
 </script>
 
 <template>
-  <!-- container principal ; classes dark: activées si <html> a .dark -->
-  <div class="min-h-screen bg-gray-50 dark:bg-neutral-900 flex flex-col items-center py-12 px-4 pb-28">
-    <div class="w-full max-w-4xl rounded-2xl shadow-lg bg-white dark:bg-neutral-800 p-6">
-      <div v-if="isLoading" class="text-gray-500 dark:text-gray-300">Chargement…</div>
-      <div v-else-if="errorMsg" class="text-red-600 dark:text-red-400">{{ errorMsg }}</div>
-      <div v-else-if="!album" class="text-gray-600 dark:text-gray-300">Aucun album trouvé.</div>
+  <!--
+    Racine plate :
+    - pas de shadow/border ici (la carte sombre vient de la page home)
+    - pb-28 pour laisser la place au player sticky
+  -->
+  <div class="w-full pb-28">
+    <!-- ÉTATS DE CHARGEMENT / ERREUR -->
+    <div v-if="isLoading" class="text-gray-300">Chargement…</div>
+    <div v-else-if="errorMsg" class="text-red-400">{{ errorMsg }}</div>
+    <div v-else-if="!album" class="text-gray-300">Aucun album trouvé.</div>
 
-      <div v-else>
-        <!-- header album -->
-        <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-center mb-6">
-          <img :src="album.cover_url" alt="Cover album"
-               class="w-full aspect-square rounded-2xl object-cover bg-gray-100 dark:bg-neutral-700" />
-          <div class="flex flex-col justify-center">
-            <h1 class="text-3xl font-extrabold tracking-tight mb-2 text-neutral-900 dark:text-white">Muso</h1>
-            <p class="text-gray-700 dark:text-gray-200">
-              <span class="font-semibold">Album :</span> <span class="italic">{{ album.title }}</span>
-            </p>
-            <p v-if="album.release_year" class="text-gray-500 dark:text-gray-400">Sortie : {{ album.release_year }}</p>
-          </div>
+    <!-- CONTENU PRINCIPAL -->
+    <div v-else>
+      <!-- HEADER ALBUM -->
+      <div class="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-center mb-6">
+        <!-- cover -->
+        <img
+          :src="album.cover_url"
+          alt="Cover album"
+          class="w-full aspect-square rounded-2xl object-cover"
+        />
+        <!-- infos -->
+        <div class="flex flex-col justify-center">
+          <h1 class="text-3xl font-extrabold tracking-tight mb-2">Muso</h1>
+          <p class="opacity-90">
+            <span class="font-semibold">Album :</span> <span class="italic">{{ album.title }}</span>
+          </p>
+          <p v-if="album.release_year" class="opacity-70">Sortie : {{ album.release_year }}</p>
         </div>
-
-        <!-- liste des pistes -->
-        <ul v-if="album.tracks && album.tracks.length" class="divide-y divide-gray-100 dark:divide-neutral-700">
-          <li
-            v-for="t in album.tracks"
-            :key="t.id"
-            class="flex items-center gap-4 py-3 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-neutral-750/50"
-            :class="isActive(t) ? 'bg-emerald-100 dark:bg-emerald-900/30' : ''"
-          >
-            <div class="w-8 text-right text-gray-400">{{ t.track_number }}</div>
-            <div class="flex-1 min-w-0">
-              <p class="font-medium text-gray-900 dark:text-gray-100 leading-tight truncate">{{ t.title }}</p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Muso</p>
-            </div>
-            <button
-              @click="toggle(t)"
-              class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold border transition hover:shadow active:scale-95"
-              :class="isActiveAndPlaying(t)
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-neutral-600'"
-              aria-label="Play/Pause"
-            >
-              <Pause v-if="isActiveAndPlaying(t)" :size="18" />
-              <Play v-else :size="18" />
-              <span class="sr-only">Play/Pause</span>
-            </button>
-          </li>
-        </ul>
-
-        <div v-else class="text-gray-500 dark:text-gray-300">Aucune piste dans cet album.</div>
       </div>
+
+      <!-- LISTE DES PISTES (aucun divide/border/hover dur) -->
+      <ul v-if="album.tracks && album.tracks.length">
+        <li
+          v-for="t in album.tracks"
+          :key="t.id"
+          class="flex items-center gap-4 py-3 px-2 rounded-lg hover:bg-white/5"
+          :class="isActive(t) ? 'bg-emerald-900/30' : ''"
+        >
+          <!-- numéro -->
+          <div class="w-8 text-right opacity-60">{{ t.track_number }}</div>
+
+          <!-- titre -->
+          <div class="flex-1 min-w-0">
+            <p class="font-medium leading-tight truncate">{{ t.title }}</p>
+            <p class="text-xs opacity-70 truncate">Muso</p>
+          </div>
+
+          <!-- bouton play/pause (sans border/shadow) -->
+          <button
+            @click="toggle(t)"
+            class="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold active:scale-95 transition"
+            :class="isActiveAndPlaying(t) ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white'"
+            aria-label="Play/Pause"
+          >
+            <Pause v-if="isActiveAndPlaying(t)" :size="18" />
+            <Play v-else :size="18" />
+            <span class="sr-only">Play/Pause</span>
+          </button>
+        </li>
+      </ul>
+
+      <div v-else class="text-gray-300">Aucune piste dans cet album.</div>
     </div>
+  </div>
 
-    <!-- lecteur audio -->
-    <audio ref="audioEl" class="hidden"></audio>
+  <!-- ÉLÉMENT AUDIO (caché) -->
+  <audio ref="audioEl" class="hidden"></audio>
 
-    <!-- STICKY PLAYER -->
-    <div
-      v-if="activeTrack"
-      class="fixed inset-x-0 bottom-0 z-50 border-t bg-white/90 dark:bg-neutral-900/90 backdrop-blur
-             supports-[backdrop-filter]:bg-white/70 supports-[backdrop-filter]:dark:bg-neutral-900/70"
-      style="padding-bottom: env(safe-area-inset-bottom);"
-    >
-      <div class="max-w-4xl mx-auto px-4 py-3">
-        <div class="flex items-center gap-3">
-          <!-- mini cover -->
-          <img :src="activeTrack.cover_url || album.cover_url" alt=""
-               class="w-10 h-10 rounded-md object-cover bg-gray-100 dark:bg-neutral-700" />
+  <!-- PLAYER COLLANT EN BAS (translucide comme la nav) -->
+  <div
+    v-if="activeTrack"
+    class="fixed inset-x-0 bottom-0 z-50 bg-gray-900/70 backdrop-blur"
+    style="padding-bottom: env(safe-area-inset-bottom);"
+  >
+    <div class="max-w-4xl mx-auto px-4 py-3 text-white">
+      <div class="flex items-center gap-3">
+        <!-- mini cover -->
+        <img
+          :src="activeTrack.cover_url || album.cover_url"
+          alt=""
+          class="w-10 h-10 rounded-md object-cover"
+        />
 
-          <div class="min-w-0">
-            <p class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ activeTrack.title }}</p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 truncate">Muso — {{ album.title }}</p>
-          </div>
-
-          <div class="flex items-center gap-2 ml-auto">
-            <button
-              @click="playPrev"
-              class="rounded-full border w-9 h-9 flex items-center justify-center hover:shadow active:scale-95
-                     bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-neutral-600"
-              aria-label="Précédent"
-            >
-              <SkipBack :size="16" />
-            </button>
-
-            <button
-              @click="isPlaying ? pause() : (activeTrack ? playTrack(activeTrack) : null)"
-              class="rounded-full border w-10 h-10 flex items-center justify-center font-semibold hover:shadow active:scale-95
-                     "
-              :class="isPlaying
-                ? 'bg-emerald-600 text-white border-emerald-600'
-                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-neutral-600'"
-              aria-label="Play/Pause"
-            >
-              <Pause v-if="isPlaying" :size="18" />
-              <Play v-else :size="18" />
-            </button>
-
-            <button
-              @click="playNext"
-              class="rounded-full border w-9 h-9 flex items-center justify-center hover:shadow active:scale-95
-                     bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-100 border-gray-300 dark:border-neutral-600"
-              aria-label="Suivant"
-            >
-              <SkipForward :size="16" />
-            </button>
-          </div>
+        <!-- titre piste -->
+        <div class="min-w-0">
+          <p class="font-medium truncate">{{ activeTrack.title }}</p>
+          <p class="text-xs opacity-80 truncate">Muso — {{ album.title }}</p>
         </div>
 
-        <!-- barre de progression draggable -->
-        <div class="mt-2">
-          <div class="flex items-center gap-3">
-            <span class="text-xs tabular-nums text-gray-600 dark:text-gray-300">{{ formatTime(currentTime) }}</span>
+        <!-- contrôles -->
+        <div class="flex items-center gap-2 ml-auto">
+          <button
+            @click="playPrev"
+            class="rounded-full w-9 h-9 flex items-center justify-center active:scale-95 bg-white/10 text-white"
+            aria-label="Précédent"
+          >
+            <SkipBack :size="16" />
+          </button>
 
+          <button
+            @click="isPlaying ? pause() : (activeTrack ? playTrack(activeTrack) : null)"
+            class="rounded-full w-10 h-10 flex items-center justify-center font-semibold active:scale-95"
+            :class="isPlaying ? 'bg-emerald-600 text-white' : 'bg-white/10 text-white'"
+            aria-label="Play/Pause"
+          >
+            <Pause v-if="isPlaying" :size="18" />
+            <Play v-else :size="18" />
+          </button>
+
+          <button
+            @click="playNext"
+            class="rounded-full w-9 h-9 flex items-center justify-center active:scale-95 bg-white/10 text-white"
+            aria-label="Suivant"
+          >
+            <SkipForward :size="16" />
+          </button>
+        </div>
+      </div>
+
+      <!-- barre de progression (sans border/shadow) -->
+      <div class="mt-2">
+        <div class="flex items-center gap-3">
+          <span class="text-xs tabular-nums opacity-80">{{ formatTime(currentTime) }}</span>
+
+          <div
+            ref="progressWrap"
+            class="flex-1 h-2 bg-white/20 rounded-full cursor-pointer relative select-none"
+            @mousedown="onDragStart"
+            @touchstart="onDragStart"
+            @click="onProgressClick"
+          >
+            <!-- progression -->
+            <div class="h-2 bg-emerald-500 rounded-full" :style="{ width: `${progress * 100}%` }"></div>
+
+            <!-- poignée -->
             <div
-              ref="progressWrap"
-              class="flex-1 h-2 bg-gray-200 dark:bg-neutral-700 rounded-full cursor-pointer relative select-none"
-              @mousedown="onDragStart"
-              @touchstart="onDragStart"
-              @click="onProgressClick"
-            >
-              <div class="h-2 bg-emerald-600 rounded-full" :style="{ width: `${progress * 100}%` }"></div>
-              <!-- poignée -->
-              <div
-                class="absolute -top-1.5 h-5 w-5 rounded-full border shadow
-                       bg-white dark:bg-neutral-900 border-gray-300 dark:border-neutral-600"
-                :style="{ left: `calc(${progress * 100}% - 10px)` }"
-              />
-            </div>
-
-            <span class="text-xs tabular-nums text-gray-600 dark:text-gray-300">{{ formatTime(duration) }}</span>
+              class="absolute -top-1.5 h-5 w-5 rounded-full bg-white"
+              :style="{ left: `calc(${progress * 100}% - 10px)` }"
+            />
           </div>
+
+          <span class="text-xs tabular-nums opacity-80">{{ formatTime(duration) }}</span>
         </div>
       </div>
     </div>
