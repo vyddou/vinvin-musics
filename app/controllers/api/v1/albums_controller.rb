@@ -1,30 +1,34 @@
-module Api
-  module V1
-    class AlbumsController < ApplicationController
-      protect_from_forgery with: :null_session
+# app/controllers/api/v1/albums_controller.rb
+class Api::V1::AlbumsController < Api::V1::BaseController
+  def index
+    albums = Album.order(created_at: :desc)
+    render json: albums.map { |a|
+      {
+        id: a.id,
+        title: a.title,
+        release_year: a.release_year,
+        cover_url: blob_url(a.cover) # (si tu gardes un vieux champ cover_url, ajoute || a.cover_url)
+      }
+    }
+  end
 
-      # GET /api/v1/albums
-      def index
-        albums = Album.includes(:genre).order(:id)
-        render json: albums.as_json(
-          only: [:id, :title, :cover_url, :release_year],
-          include: { genre: { only: [:id, :name] } }
-        )
-      end
-
-      # GET /api/v1/albums/:id
-      def show
-        album = Album.includes(:genre, :tracks).find(params[:id])
-        render json: album.as_json(
-          only: [:id, :title, :cover_url, :release_year],
-          include: {
-            genre: { only: [:id, :name] },
-            tracks: {
-              only: [:id, :title, :artist, :duration_seconds, :audio_url, :cover_url, :track_number]
-            }
-          }
-        )
-      end
-    end
+  def show
+    a = Album.find(params[:id])
+    render json: {
+      id: a.id,
+      title: a.title,
+      release_year: a.release_year,
+      cover_url: blob_url(a.cover),
+      tracks: a.tracks.map { |t|
+        {
+          id: t.id,
+          title: t.title,
+          track_number: t.track_number,
+          duration: t.duration,
+          audio_url: blob_url(t.audio),
+          cover_url: blob_url(a.cover)
+        }
+      }
+    }
   end
 end

@@ -2,6 +2,8 @@ class Track < ApplicationRecord
   # Une piste appartient à un album
   belongs_to :album
 
+  has_one_attached :audio        # <- audio Active Storage
+
   # Contraintes utiles
   validates :title, presence: true
   validates :track_number, allow_nil: true, numericality: { only_integer: true }
