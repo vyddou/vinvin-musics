@@ -1,0 +1,32 @@
+<!-- app/views/admin/tracks/_form.html.erb -->
+<%= form_with model: [:admin, (@track.persisted? ? @track : [@album, @track])],
+              html: { multipart: true }, class: "space-y-4" do |f| %>
+  <div>
+    <%= f.label :title, "Titre", class: "block text-sm font-medium" %>
+    <%= f.text_field :title, class: "mt-1 w-full rounded border p-2" %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div>
+      <%= f.label :track_number, "Position", class: "block text-sm font-medium" %>
+      <%= f.number_field :track_number, class: "mt-1 w-full rounded border p-2" %>
+    </div>
+    <div>
+      <%= f.label :duration, "Durée (s)", class: "block text-sm font-medium" %>
+      <%= f.number_field :duration, class: "mt-1 w-full rounded border p-2" %>
+    </div>
+  </div>
+
+  <div>
+    <%= f.label :audio, "Fichier audio (mp3/wav)", class: "block text-sm font-medium" %>
+    <%= f.file_field :audio, direct_upload: true, accept: "audio/*", class: "mt-1 w-full rounded border p-2 bg-white" %>
+    <% if @track.audio.attached? %>
+      <p class="mt-2 text-sm text-gray-600">Fichier actuel : <%= @track.audio.filename %></p>
+    <% end %>
+  </div>
+
+  <div class="flex justify-end gap-2">
+    <%= link_to "Annuler", edit_admin_album_path(@track&.album || @album), class: "px-3 py-2 rounded border" %>
+    <%= f.submit "Enregistrer", class: "px-3 py-2 rounded bg-blue-600 text-white" %>
+  </div>
+<% end %>
