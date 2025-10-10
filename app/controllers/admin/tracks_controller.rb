@@ -42,6 +42,6 @@ class Admin::TracksController < Admin::BaseController
   end
 
   def track_params
-    params.require(:track).permit(:title, :audio_url, :duration, :position)
+    params.require(:track).permit(:title, :track_number, :duration, :audio)
   end
 end
